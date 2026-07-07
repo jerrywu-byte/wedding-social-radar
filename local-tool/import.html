@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>wedding-social-radar local import</title>
+    <style>
+      :root {
+        --bg: #f7f8f5;
+        --surface: #fff;
+        --ink: #18211f;
+        --muted: #65706d;
+        --line: #dce5e1;
+        --primary: #0f766e;
+        --danger: #b42318;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(1040px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 24px 0 40px;
+      }
+      h1 { margin: 0 0 8px; font-size: clamp(1.5rem, 4vw, 2.35rem); }
+      p { color: var(--muted); line-height: 1.7; }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 16px;
+        margin: 14px 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 12px;
+      }
+      label { display: grid; gap: 6px; font-weight: 800; }
+      select, textarea, input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 260px;
+        resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.9rem;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 12px 0;
+      }
+      button {
+        min-height: 42px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 9px 13px;
+        background: var(--primary);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 800;
+      }
+      button.secondary {
+        background: #fff;
+        border-color: var(--line);
+        color: var(--ink);
+      }
+      .notice {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        color: var(--muted);
+      }
+      .notice.error {
+        border-color: #f2b8b5;
+        background: #fff4f2;
+        color: var(--danger);
+      }
+      code {
+        background: #eef4f1;
+        border-radius: 6px;
+        padding: 2px 5px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 760px;
+      }
+      th, td {
+        border-bottom: 1px solid var(--line);
+        padding: 9px;
+        text-align: left;
+        vertical-align: top;
+        font-size: 0.9rem;
+      }
+      .table-wrap { overflow-x: auto; }
+      @media (max-width: 760px) {
+        .grid { grid-template-columns: 1fr; }
+        .toolbar { display: grid; }
+        button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>本機半自動匯入工具</h1>
+      <p>先在瀏覽器自行登入平台並搜尋關鍵字，再把可見頁面資料貼到這裡。工具只在本機整理資料並下載 <code>results.json</code>，不接收、不保存帳號密碼。</p>
+
+      <section class="panel">
+        <h2>使用方式</h2>
+        <p>方法 A：登入平台並開到搜尋或列表頁，將 <code>local-tool/bookmarklet.js</code> 內容新增成書籤，於頁面上點書籤下載擷取 JSON，再貼到下方。</p>
+        <p>方法 B：手動貼上 CSV。欄位建議為 <code>title,summary,date,likes,comments,url</code>。</p>
+        <p>方法 C：貼上一般文字或 HTML，工具會用保守規則切段解析，互動數需之後手動補強。</p>
+      </section>
+
+      <section class="panel grid">
+        <label>
+          平台
+          <select id="platform">
+            <option value="ptt">PTT</option>
+            <option value="dcard">Dcard</option>
+            <option value="threads">Threads</option>
+          </select>
+        </label>
+        <label>
+          貼上資料
+          <textarea id="source" placeholder="貼上 bookmarklet JSON、CSV、一般文字或 HTML"></textarea>
+        </label>
+      </section>
+
+      <div class="toolbar">
+        <button id="parseButton">解析並加入結果</button>
+        <button id="downloadButton" class="secondary">下載 results.json</button>
+        <button id="clearButton" class="secondary">清空本機暫存</button>
+      </div>
+
+      <div id="message" class="notice">尚未解析資料。</div>
+
+      <section class="panel">
+        <h2>目前暫存結果</h2>
+        <div id="summary" class="notice"></div>
+        <div id="preview" class="table-wrap"></div>
+      </section>
+    </main>
+
+    <script>
+      const KEYWORDS = ["婚宴","婚禮","結婚","訂婚","喜宴","宴客","婚宴會館","婚宴場地","婚禮主持","婚企","試菜","一桌多少","低消","停車","二進"];
+      const STORAGE_KEY = "wedding-social-radar:local-tool-draft";
+      const emptyPayload = () => ({
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        generatedBy: "local-tool/import.html",
+        keywords: KEYWORDS,
+        platforms: {
+          ptt: { id: "ptt-local", createdAt: new Date().toISOString(), totalScanned: 0, items: [], errors: [] },
+          dcard: { id: "dcard-local", createdAt: new Date().toISOString(), totalScanned: 0, items: [], errors: [] },
+          threads: { id: "threads-local", createdAt: new Date().toISOString(), totalScanned: 0, items: [], errors: [] }
+        }
+      });
+
+      function readDraft() {
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY)) || emptyPayload();
+        } catch {
+          return emptyPayload();
+        }
+      }
+
+      function saveDraft(payload) {
+        payload.createdAt = new Date().toISOString();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      }
+
+      function countKeywordHits(text) {
+        return KEYWORDS.reduce((total, keyword) => String(text || "").includes(keyword) ? total + 1 : total, 0);
+      }
+
+      function parseJson(value) {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed.items)) return parsed.items;
+        if (parsed.platforms) {
+          return Object.values(parsed.platforms).flatMap((platform) => platform.items || []);
+        }
+        return [];
+      }
+
+      function splitCsvLine(line) {
+        const result = [];
+        let current = "";
+        let quote = false;
+        for (const char of line) {
+          if (char === '"') quote = !quote;
+          else if (char === "," && !quote) {
+            result.push(current.trim());
+            current = "";
+          } else current += char;
+        }
+        result.push(current.trim());
+        return result.map((cell) => cell.replace(/^"|"$/g, ""));
+      }
+
+      function parseCsv(value) {
+        const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+        if (lines.length < 2 || !lines[0].includes(",")) return [];
+        const headers = splitCsvLine(lines[0]).map((cell) => cell.toLowerCase());
+        return lines.slice(1).map((line) => {
+          const cells = splitCsvLine(line);
+          const item = {};
+          headers.forEach((header, index) => item[header] = cells[index] || "");
+          return item;
+        });
+      }
+
+      function parseText(value) {
+        const doc = new DOMParser().parseFromString(value, "text/html");
+        const text = doc.body.textContent || value;
+        return text
+          .split(/\n{2,}|(?=https?:\/\/)/)
+          .map((part) => part.replace(/\s+/g, " ").trim())
+          .filter((part) => part.length > 20 && countKeywordHits(part) > 0)
+          .map((part) => ({
+            title: part.slice(0, 80),
+            summary: part.slice(0, 240),
+            date: new Date().toISOString(),
+            likes: 0,
+            comments: 0,
+            url: ""
+          }));
+      }
+
+      function parseInput(value) {
+        const trimmed = value.trim();
+        if (!trimmed) return [];
+        try {
+          return parseJson(trimmed);
+        } catch {}
+        const csv = parseCsv(trimmed);
+        if (csv.length) return csv;
+        return parseText(trimmed);
+      }
+
+      function normalizeItem(item) {
+        return {
+          title: item.title || item.name || item.summary || "無標題",
+          summary: item.summary || item.text || item.content || item.title || "",
+          date: item.date || item.createdAt || item.time || new Date().toISOString(),
+          likes: Number(item.likes || item.likeCount || item.reactions || 0),
+          comments: Number(item.comments || item.commentCount || item.replies || 0),
+          url: item.url || item.link || item.href || item.sourceUrl || ""
+        };
+      }
+
+      function addItems(platform, items) {
+        const payload = readDraft();
+        const bucket = payload.platforms[platform];
+        const existing = new Set(bucket.items.map((item) => item.url || `${item.title}-${item.date}`));
+        const normalized = items
+          .map(normalizeItem)
+          .filter((item) => countKeywordHits(`${item.title} ${item.summary}`) > 0)
+          .filter((item) => {
+            const key = item.url || `${item.title}-${item.date}`;
+            if (existing.has(key)) return false;
+            existing.add(key);
+            return true;
+          });
+        bucket.items.push(...normalized);
+        bucket.totalScanned += items.length;
+        bucket.createdAt = new Date().toISOString();
+        saveDraft(payload);
+        return { added: normalized.length, scanned: items.length };
+      }
+
+      function downloadResults() {
+        const payload = readDraft();
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "results.json";
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+      function render() {
+        const payload = readDraft();
+        const rows = Object.entries(payload.platforms).flatMap(([platform, data]) => {
+          return data.items.map((item) => ({ platform, ...item }));
+        });
+        document.getElementById("summary").textContent = `PTT ${payload.platforms.ptt.items.length} 筆，Dcard ${payload.platforms.dcard.items.length} 筆，Threads ${payload.platforms.threads.items.length} 筆。`;
+        document.getElementById("preview").innerHTML = rows.length ? `
+          <table>
+            <thead><tr><th>平台</th><th>標題</th><th>日期</th><th>讚</th><th>留言</th><th>連結</th></tr></thead>
+            <tbody>
+              ${rows.slice(0, 80).map((row) => `
+                <tr>
+                  <td>${row.platform}</td>
+                  <td>${row.title}</td>
+                  <td>${row.date}</td>
+                  <td>${row.likes}</td>
+                  <td>${row.comments}</td>
+                  <td>${row.url ? `<a href="${row.url}" target="_blank" rel="noreferrer">開啟</a>` : ""}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        ` : "<p>尚無暫存資料。</p>";
+      }
+
+      document.getElementById("parseButton").addEventListener("click", () => {
+        const platform = document.getElementById("platform").value;
+        const source = document.getElementById("source").value;
+        const items = parseInput(source);
+        const result = addItems(platform, items);
+        document.getElementById("message").className = "notice";
+        document.getElementById("message").textContent = `已掃描 ${result.scanned} 筆，加入 ${result.added} 筆命中關鍵字的新資料。`;
+        render();
+      });
+
+      document.getElementById("downloadButton").addEventListener("click", downloadResults);
+      document.getElementById("clearButton").addEventListener("click", () => {
+        localStorage.removeItem(STORAGE_KEY);
+        document.getElementById("message").textContent = "已清空本機暫存。";
+        render();
+      });
+
+      render();
+    </script>
+  </body>
+</html>

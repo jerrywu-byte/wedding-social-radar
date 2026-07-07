@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-07-07T00:00:00.000Z",
+  "generatedBy": "local-tool/import.html",
+  "keywords": [
+    "婚宴",
+    "婚禮",
+    "結婚",
+    "訂婚",
+    "喜宴",
+    "宴客",
+    "婚宴會館",
+    "婚宴場地",
+    "婚禮主持",
+    "婚企",
+    "試菜",
+    "一桌多少",
+    "低消",
+    "停車",
+    "二進"
+  ],
+  "platforms": {
+    "ptt": {
+      "id": "ptt-empty",
+      "createdAt": "2026-07-07T00:00:00.000Z",
+      "totalScanned": 0,
+      "items": [],
+      "errors": [
+        {
+          "title": "尚未匯入 PTT 資料",
+          "message": "請使用 local-tool/import.html 產生新的 data/results.json。"
+        }
+      ]
+    },
+    "dcard": {
+      "id": "dcard-empty",
+      "createdAt": "2026-07-07T00:00:00.000Z",
+      "totalScanned": 0,
+      "items": [],
+      "errors": [
+        {
+          "title": "尚未匯入 Dcard 資料",
+          "message": "請使用 local-tool/import.html 產生新的 data/results.json。"
+        }
+      ]
+    },
+    "threads": {
+      "id": "threads-empty",
+      "createdAt": "2026-07-07T00:00:00.000Z",
+      "totalScanned": 0,
+      "items": [],
+      "errors": [
+        {
+          "title": "尚未匯入 Threads 資料",
+          "message": "請使用 local-tool/import.html 產生新的 data/results.json。"
+        }
+      ]
+    }
+  }
+}
