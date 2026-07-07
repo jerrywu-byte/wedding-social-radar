@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>wedding-social-radar</title>
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js" defer></script>
+    <script src="assets/js/config.js" defer></script>
+    <script src="assets/js/storage.js" defer></script>
+    <script src="assets/js/scoring.js" defer></script>
+    <script src="assets/js/scrapers.js" defer></script>
+    <script src="assets/js/charts.js" defer></script>
+    <script src="assets/js/app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Wedding Social Radar</p>
+        <h1>婚宴社群 7 天熱門議題雷達</h1>
+      </div>
+      <span id="storageStatus" class="storage-pill">localStorage</span>
+    </header>
+
+    <main id="app" class="app-shell" aria-live="polite"></main>
+
+    <footer class="app-footer">
+      <span>純前端 GitHub Pages 專案</span>
+      <span>無資料庫、無付費服務、無 OpenAI API</span>
+    </footer>
+  </body>
+</html>
